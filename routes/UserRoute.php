@@ -30,45 +30,47 @@ class UserRoute {
         // Debugging - Output the current URI after normalization
         error_log("User Route Handling for URI: $uri");
 
-        // Define user-related routes
+        // Define routes that do NOT require authentication
         switch ($uri) {
             case '/register': // POST - Register a new user
                 if ($method === 'POST') {
-                    error_log("Handling User Registration");
+                    error_log("Handling User Registration - No Auth Required");
                     $data = json_decode(file_get_contents('php://input'), true);
                     $userController->createUser($data);
+                    return; // Exit after handling
                 }
                 break;
 
             case '/verify': // GET - Verify user email
                 if ($method === 'GET') {
-                    error_log("Handling Email Verification");
+                    error_log("Handling Email Verification - No Auth Required");
                     $token = $_GET['token'] ?? '';
                     $userController->verifyEmail($token);
+                    return; // Exit after handling
                 }
                 break;
 
             case '/request-password-reset': // POST - Request OTP for password reset
                 if ($method === 'POST') {
-                    error_log("Handling Password Reset Request");
+                    error_log("Handling Password Reset Request - No Auth Required");
                     $data = json_decode(file_get_contents('php://input'), true);
                     $userController->requestPasswordReset($data['email']);
+                    return; // Exit after handling
                 }
                 break;
 
             case '/reset-password': // PUT - Verify OTP and reset password
                 if ($method === 'PUT') {
-                    error_log("Handling Password Reset");
+                    error_log("Handling Password Reset - No Auth Required");
                     $data = json_decode(file_get_contents('php://input'), true);
                     $userController->resetPassword($data);
+                    return; // Exit after handling
                 }
                 break;
-
-            default:
-                // Routes that require authentication (get, update, delete user)
-                $this->handleAuthenticatedRoutes($uri, $method, $userController);
-                break;
         }
+
+        // Routes that DO require authentication
+        $this->handleAuthenticatedRoutes($uri, $method, $userController);
     }
 
     private function handleAuthenticatedRoutes($uri, $method, $userController) {

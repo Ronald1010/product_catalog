@@ -2,6 +2,8 @@
 
 namespace App\Providers\Email;
 
+require_once __DIR__ . '/../../../vendor/autoload.php';
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Dotenv\Dotenv;
@@ -16,17 +18,22 @@ class SendEmailProvider
         $dotenv = Dotenv::createImmutable(__DIR__ . '/../../../');
         $dotenv->load();
 
+        // Verify the environment variables
+        $baseUrl = $_ENV['BASE_URL'] ?? 'BASE_URL not set in .env';
+        //echo "Base URL: $baseUrl" . PHP_EOL;
+
+        // Initialize PHPMailer
         $this->mail = new PHPMailer(true);
 
         // SMTP settings
         $this->mail->isSMTP();
-        $this->mail->Host = $_ENV['MAIL_HOST'];
+        $this->mail->Host = $_ENV['MAIL_HOST'] ?? 'smtp.example.com';
         $this->mail->SMTPAuth = true;
-        $this->mail->Username = $_ENV['MAIL_USERNAME'];
-        $this->mail->Password = $_ENV['MAIL_PASSWORD'];
+        $this->mail->Username = $_ENV['MAIL_USERNAME'] ?? 'user@example.com';
+        $this->mail->Password = $_ENV['MAIL_PASSWORD'] ?? 'secret';
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $this->mail->Port = $_ENV['MAIL_PORT'];
-        $this->mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
+        $this->mail->Port = $_ENV['MAIL_PORT'] ?? 587;
+        $this->mail->setFrom($_ENV['MAIL_FROM_ADDRESS'] ?? 'from@example.com', $_ENV['MAIL_FROM_NAME'] ?? 'Example');
     }
 
     // Helper function to send email
@@ -52,7 +59,7 @@ class SendEmailProvider
     public function sendVerificationEmail($toEmail, $toName, $verificationToken)
     {
         // Construct verification URL
-        $baseUrl = $_ENV['BASE_URL'];
+        $baseUrl = $_ENV['BASE_URL'] ?? 'BASE_URL not set in .env';
         $verificationUrl = $baseUrl . '/verify?token=' . $verificationToken;
 
         // Email content
@@ -78,3 +85,12 @@ class SendEmailProvider
         return $this->sendEmail($toEmail, $toName, $subject, $body);
     }
 }
+
+// Commented-out testing block
+/*
+if (php_sapi_name() === 'cli') { // Check if running from command line
+    echo "Initializing SendEmailProvider..." . PHP_EOL;
+    $testEmailProvider = new SendEmailProvider();
+    echo "Environment and SMTP settings loaded successfully." . PHP_EOL;
+}
+*/
