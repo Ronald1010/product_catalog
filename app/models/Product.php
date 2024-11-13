@@ -38,35 +38,54 @@ class Product
     }
 
     // Retrieve details for a specific product by ID, including additional images
-    public function getProductDetails($productId)
+    public function getSellerProducts($sellerId)
     {
+        // SQL query to fetch all products for a seller
         $query = "SELECT p.product_id, p.product_name, p.description, p.price, 
-                         p.stock_quantity AS stock, p.category, p.size, p.color, 
-                         p.product_image AS primary_image, CONCAT(u.first_name, ' ', u.last_name) AS seller_name
-                  FROM product p
-                  JOIN users u ON p.seller_id = u.uuid
-                  WHERE p.product_id = :product_id";
+                     p.stock_quantity AS stock, p.category, p.size, p.color, 
+                     p.product_image AS primary_image, CONCAT(u.first_name, ' ', u.last_name) AS seller_name
+              FROM product p
+              JOIN users u ON p.seller_id = u.uuid
+              WHERE p.seller_id = :seller_id";  // Filter by seller_id
 
+        // Log the query for debugging
+        error_log("Executing query: " . $query);
+        error_log("With seller_id: " . $sellerId);
+
+        // Prepare and execute the query
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
+        $stmt->bindParam(':seller_id', $sellerId, PDO::PARAM_STR);  // Assuming seller_id is a UUID
         $stmt->execute();
-        $productDetails = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Fetch additional images for the product
-        $queryImages = "SELECT image_url FROM product_images WHERE product_id = :product_id";
-        $stmtImages = $this->conn->prepare($queryImages);
-        $stmtImages->bindParam(':product_id', $productId, PDO::PARAM_INT);
-        $stmtImages->execute();
-        $additionalImages = $stmtImages->fetchAll(PDO::FETCH_COLUMN);
+        // Fetch all products for the seller
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($productDetails) {
-            $productDetails['additional_images'] = $additionalImages;
+        // Log fetched results
+        error_log("Fetched products: " . print_r($products, true));
+
+        // If no products are found, return a message
+        if (!$products) {
+            return [
+                'status' => 'error',
+                'message' => 'No products found for the specified seller.'
+            ];
+        }
+
+        // Now fetch additional images for each product
+        foreach ($products as &$product) {
+            $queryImages = "SELECT image_url FROM product_images WHERE product_id = :product_id";
+            $stmtImages = $this->conn->prepare($queryImages);
+            $stmtImages->bindParam(':product_id', $product['product_id'], PDO::PARAM_INT);
+            $stmtImages->execute();
+            $additionalImages = $stmtImages->fetchAll(PDO::FETCH_COLUMN);
+
+            $product['additional_images'] = $additionalImages;  // Add images to product details
         }
 
         return [
             'status' => 'success',
-            'data' => $productDetails ?: [],
-            'message' => $productDetails ? '' : 'Product not found.'
+            'data' => $products,
+            'message' => ''
         ];
     }
 
@@ -100,11 +119,11 @@ class Product
                   LEFT JOIN product_images pi ON p.product_id = pi.product_id
                   WHERE p.product_id = :product_id
                   GROUP BY p.product_id";
-        
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -137,17 +156,17 @@ class Product
                   FROM product p
                   JOIN users u ON p.seller_id = u.uuid
                   WHERE u.uuid = :uuid";
-    
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':uuid', $uuid, PDO::PARAM_STR);
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
         return empty($results)
             ? ['status' => 'success', 'data' => [], 'message' => 'No products available for this seller.']
             : ['status' => 'success', 'data' => $results];
     }
-    
+
     // Retrieve additional images for a specific product
     public function getProductImages($productId)
     {
@@ -159,8 +178,8 @@ class Product
     }
 
 
-      /* ====== SECTION 2: Create Methods ====== */
-        
+    /* ====== SECTION 2: Create Methods ====== */
+
     // Create a new product (for sellers)
     public function createProduct($data, $sellerId)
     {
@@ -221,7 +240,7 @@ class Product
     }
 
 
-     /* ====== SECTION 3: Update Methods ====== */
+    /* ====== SECTION 3: Update Methods ====== */
 
     // Update an existing product
     public function updateProduct($productId, $data, $sellerId)
@@ -264,7 +283,7 @@ class Product
                                 stock_quantity = :stock_quantity, category = :category, 
                                 size = :size, color = :color 
                             WHERE product_id = :product_id AND seller_id = :seller_id";
-            
+
             $updateStmt = $this->conn->prepare($updateQuery);
             $updateStmt->bindParam(':product_name', $data['product_name']);
             $updateStmt->bindParam(':description', $data['description']);
@@ -280,8 +299,8 @@ class Product
             if ($updateStmt->execute()) {
                 $affectedRows = $updateStmt->rowCount();
                 error_log("Update executed. Rows affected: $affectedRows");
-                
-                return $affectedRows > 0 
+
+                return $affectedRows > 0
                     ? json_encode(['status' => 'success', 'message' => 'Product details updated successfully'])
                     : json_encode(['status' => 'error', 'message' => 'No changes were made to the product details']);
             } else {
@@ -296,47 +315,47 @@ class Product
     }
 
     public function updatePrimaryImage($productId, $imagePath)
-{
-    $query = "UPDATE product SET product_image = :product_image WHERE product_id = :product_id";
-    $stmt = $this->conn->prepare($query);
-    $stmt->bindParam(':product_image', $imagePath, PDO::PARAM_STR);
-    $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
+    {
+        $query = "UPDATE product SET product_image = :product_image WHERE product_id = :product_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':product_image', $imagePath, PDO::PARAM_STR);
+        $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
 
-    if ($stmt->execute()) {
-        $affectedRows = $stmt->rowCount();
-        error_log("Primary image update - rows affected: $affectedRows");
-        return $affectedRows > 0;
-    } else {
-        error_log("Primary image update failed: " . print_r($stmt->errorInfo(), true));
-        return false;
+        if ($stmt->execute()) {
+            $affectedRows = $stmt->rowCount();
+            error_log("Primary image update - rows affected: $affectedRows");
+            return $affectedRows > 0;
+        } else {
+            error_log("Primary image update failed: " . print_r($stmt->errorInfo(), true));
+            return false;
+        }
     }
-}
 
     public function updateProductImage($productId, $newImagePath)
-{
-    error_log("Attempting to update image for product ID: $productId with path: $newImagePath");
+    {
+        error_log("Attempting to update image for product ID: $productId with path: $newImagePath");
 
-    $query = "UPDATE product_images SET image_url = :image_url WHERE product_id = :product_id";
-    $stmt = $this->conn->prepare($query);
-    $stmt->bindParam(':image_url', $newImagePath, PDO::PARAM_STR);
-    $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
+        $query = "UPDATE product_images SET image_url = :image_url WHERE product_id = :product_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':image_url', $newImagePath, PDO::PARAM_STR);
+        $stmt->bindParam(':product_id', $productId, PDO::PARAM_INT);
 
-    if ($stmt->execute()) {
-        $affectedRows = $stmt->rowCount();
-        error_log("Image update executed. Rows affected: $affectedRows");
+        if ($stmt->execute()) {
+            $affectedRows = $stmt->rowCount();
+            error_log("Image update executed. Rows affected: $affectedRows");
 
-        if ($affectedRows > 0) {
-            return json_encode(['status' => 'success', 'message' => 'Product image updated successfully']);
+            if ($affectedRows > 0) {
+                return json_encode(['status' => 'success', 'message' => 'Product image updated successfully']);
+            } else {
+                error_log("No rows affected in image update; product may not exist or image path is identical.");
+                return json_encode(['status' => 'error', 'message' => 'No changes made to the product image']);
+            }
         } else {
-            error_log("No rows affected in image update; product may not exist or image path is identical.");
-            return json_encode(['status' => 'error', 'message' => 'No changes made to the product image']);
+            $errorInfo = $stmt->errorInfo();
+            error_log("Image update failed: " . print_r($errorInfo, true));
+            return json_encode(['status' => 'error', 'message' => 'Failed to update product image']);
         }
-    } else {
-        $errorInfo = $stmt->errorInfo();
-        error_log("Image update failed: " . print_r($errorInfo, true));
-        return json_encode(['status' => 'error', 'message' => 'Failed to update product image']);
     }
-}
 
 
 
@@ -355,7 +374,7 @@ class Product
     }
 
 
-     /* ====== SECTION 4: Delete Methods ====== */
+    /* ====== SECTION 4: Delete Methods ====== */
 
     // Delete a product
     public function deleteProduct($productId, $sellerId)
@@ -378,7 +397,7 @@ class Product
     }
 
 
-     /* ====== SECTION 5: Search and Filtering Methods ====== */
+    /* ====== SECTION 5: Search and Filtering Methods ====== */
 
     // Search products by name or description
     public function searchByName($query)
@@ -387,15 +406,15 @@ class Product
                     category, size, color, product_image 
                 FROM " . $this->table . " 
                 WHERE product_name LIKE :query OR description LIKE :query";
-        
+
         $stmt = $this->conn->prepare($sql);
         $searchQuery = '%' . $query . '%';
         $stmt->bindParam(':query', $searchQuery, PDO::PARAM_STR);
         $stmt->execute();
-        
+
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         error_log("searchByName() results: " . print_r($results, true));
-        
+
         return $results;
     }
 
@@ -406,17 +425,17 @@ class Product
                 FROM " . $this->table . " 
                 WHERE (product_name LIKE :query OR description LIKE :query) 
                 AND price BETWEEN :min_price AND :max_price";
-        
+
         $stmt = $this->conn->prepare($sql);
         $searchQuery = '%' . $query . '%';
         $stmt->bindParam(':query', $searchQuery, PDO::PARAM_STR);
         $stmt->bindParam(':min_price', $minPrice, PDO::PARAM_STR);
         $stmt->bindParam(':max_price', $maxPrice, PDO::PARAM_STR);
         $stmt->execute();
-        
+
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         error_log("searchByPriceRange() results: " . print_r($results, true));
-        
+
         return $results;
     }
 

@@ -165,7 +165,7 @@ class SellerController
             return json_encode(['status' => 'success', 'data' => [], 'message' => 'No products found for this seller']);
         }
 
-        return json_encode(['status' => 'success', 'data' => $products]);
+        return json_encode($products);
     }
 
     /* ====== SECTION 4: Product Deletion ====== */
@@ -204,14 +204,14 @@ class SellerController
         $targetDir = "public/images/";
         $fileName = uniqid() . "_" . basename($file["name"]);
         $targetFilePath = $targetDir . $fileName;
-    
+
         if (move_uploaded_file($file["tmp_name"], $targetFilePath)) {
             return $targetFilePath;
         } else {
             return null;
         }
     }
-    
+
     private function handleAdditionalImages($images, $productId)
     {
         foreach ($images['tmp_name'] as $index => $tmpName) {

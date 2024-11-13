@@ -7,7 +7,7 @@ require_once __DIR__ . '/routes/UserRoute.php';
 require_once __DIR__ . '/routes/AuthRoute.php';
 require_once __DIR__ . '/routes/AdminRoute.php';
 require_once __DIR__ . '/routes/SellerRoute.php';
-require_once __DIR__ . '/routes/BuyerRoute.php';
+// require_once __DIR__ . '/routes/BuyerRoute.php';
 require_once __DIR__ . '/routes/ProductRoute.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
@@ -54,9 +54,9 @@ elseif (strpos($uri, '/products') === 0 || strpos($uri, '/search') === 0) {
 }
 
 // Route for buyer-related actions
-elseif (strpos($uri, '/buyer') === 0) {
-    (new \Routes\BuyerRoute\BuyerRoute())->handleBuyerRoute($uri, $method);
-}
+// elseif (strpos($uri, '/buyer') === 0) {
+//     (new \Routes\BuyerRoute\BuyerRoute())->handleBuyerRoute($uri, $method);
+// }
 
 // Route for seller-related actions
 elseif (strpos($uri, '/seller') === 0) {
