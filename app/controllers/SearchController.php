@@ -2,87 +2,48 @@
 
 namespace App\Controllers;
 
-use App\Models\Product;
-use Config\DatabaseConnection;
+use App\Models\Search;
+use PDO;
 
 class SearchController
 {
-    protected $product;
+    private $searchModel;
 
-    public function __construct()
+    public function __construct(PDO $db)
     {
-        // Initialize the database connection and pass it to the Product model
-        $dbConnection = new DatabaseConnection();
-        $db = $dbConnection->getConnection();
-        if ($db) {
-            error_log("Database connection established successfully in SearchController.");
-        } else {
-            error_log("Failed to establish a database connection in SearchController.");
+        $this->searchModel = new Search($db);
+    }
+
+    /**
+     * Search for products by name.
+     *
+     * @param string $keyword - The keyword to search for in product names.
+     * @return string - JSON response containing search results or an error message.
+     */
+    public function searchByName($keyword)
+    {
+        if (empty($keyword)) {
+            return json_encode([
+                'status' => 'error',
+                'message' => 'Keyword is required for search.'
+            ]);
         }
-        $this->product = new Product($db);
-    }
 
-    // 1. Search products by name
-    public function searchByName($query)
-{
-    $results = $this->product->searchByName($query);
+        // Fetch results from the model
+        $results = $this->searchModel->getSearchResultsByName($keyword);
 
-    // Transform an empty data array to a custom message
-    if (empty($results)) {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'No products found for the given search criteria'
-        ]);
-    } else {
-        echo json_encode([
-            'status' => 'success',
-            'data' => $results
-        ]);
+        // Return response
+        if (!empty($results)) {
+            return json_encode([
+                'status' => 'success',
+                'data' => $results
+            ]);
+        } else {
+            return json_encode([
+                'status' => 'error',
+                'message' => 'No products found with the given keyword.'
+            ]);
+        }
     }
 }
-
-
-
-
-    // 2. Search products with a price range
-    public function searchByPriceRange($query, $minPrice, $maxPrice)
-    {
-        error_log("Entering SearchController::searchByPriceRange() with query: $query, minPrice: $minPrice, maxPrice: $maxPrice");
-
-        $results = $this->product->searchByPriceRange($query, $minPrice, $maxPrice);
-
-        error_log("Results returned to SearchController::searchByPriceRange(): " . print_r($results, true));
-
-        echo json_encode([
-            'status' => 'success',
-            'query' => $query,
-            'min_price' => $minPrice,
-            'max_price' => $maxPrice,
-            'data' => $results
-        ]);
-
-        error_log("Exiting SearchController::searchByPriceRange()");
-    }
-
-    // 3. Advanced search with filters for category, price range, and sorting
-    public function advancedSearch($query, $category, $minPrice, $maxPrice, $sortBy)
-    {
-        error_log("Entering SearchController::advancedSearch() with query: $query, category: $category, minPrice: $minPrice, maxPrice: $maxPrice, sortBy: $sortBy");
-
-        $results = $this->product->advancedSearch($query, $category, $minPrice, $maxPrice, $sortBy);
-
-        error_log("Results returned to SearchController::advancedSearch(): " . print_r($results, true));
-
-        echo json_encode([
-            'status' => 'success',
-            'query' => $query,
-            'category' => $category,
-            'min_price' => $minPrice,
-            'max_price' => $maxPrice,
-            'sort' => $sortBy,
-            'data' => $results
-        ]);
-
-        error_log("Exiting SearchController::advancedSearch()");
-    }
-}
+?>

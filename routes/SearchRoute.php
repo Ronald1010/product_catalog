@@ -3,44 +3,41 @@
 namespace Routes\SearchRoute;
 
 use App\Controllers\SearchController;
+use PDO;
 
 class SearchRoute
 {
+    private $db;
+
+    public function __construct(PDO $db)
+    {
+        $this->db = $db;
+    }
+
     public function handleSearchRoute($uri, $method)
     {
-        $searchController = new SearchController();
+        // Instantiate the SearchController with the PDO object
+        $searchController = new SearchController($this->db);
 
         // Parse query parameters
         $queryParams = $_GET;
 
+        // Retrieve the JWT token from the Authorization header
+        $jwtToken = $_SERVER['HTTP_AUTHORIZATION'] ?? null; // Example: Authorization: Bearer token
+
         switch (true) {
             // Route for basic search by name
             case strpos($uri, '/search') === 0 && isset($queryParams['query']):
-                if (!isset($queryParams['min_price']) && !isset($queryParams['category'])) {
-                    $searchController->searchByName($queryParams['query']);
-                } elseif (isset($queryParams['min_price']) && isset($queryParams['max_price'])) {
-                    // Route for price range search
-                    $searchController->searchByPriceRange(
-                        $queryParams['query'],
-                        $queryParams['min_price'],
-                        $queryParams['max_price']
-                    );
-                } else {
-                    // Route for advanced search with category and sorting
-                    $searchController->advancedSearch(
-                        $queryParams['query'],
-                        $queryParams['category'] ?? null,
-                        $queryParams['min_price'] ?? 0,
-                        $queryParams['max_price'] ?? PHP_INT_MAX,
-                        $queryParams['sort'] ?? 'product_name'
-                    );
-                }
+                // Handle basic search by name
+                echo $searchController->searchByName($queryParams['query']);
                 break;
 
             default:
+                // Invalid route, return error
                 echo json_encode(['status' => 'error', 'message' => 'Invalid search route']);
                 http_response_code(404);
                 break;
         }
     }
 }
+?>

@@ -14,31 +14,58 @@ class ProductRoute
         $uri = str_replace('/products', '', $uri);
 
         if ($method === 'GET') {
-            if (isset($_GET['category'])) { // Check for category filter
+            // Search products route
+            if ($uri === '/search') {
+                $this->handleSearchRoute($productController);
+            } 
+            // Filter by category
+            elseif (isset($_GET['category'])) {
                 $category = $_GET['category'];
                 echo $productController->filterProductsByCategory($category);
-            } elseif (isset($_GET['seller_name'])) { // Check for full seller name filter
+            } 
+            // Filter by seller name
+            elseif (isset($_GET['seller_name'])) {
                 $sellerName = $_GET['seller_name'];
                 echo $productController->filterProductsBySellerName($sellerName);
-            } elseif (isset($_GET['seller_id'])) { // Check for seller UUID filter
-                    $sellerUuid = $_GET['seller_id'];
-                    echo $productController->filterProductsBySellerID($sellerUuid);
-            } elseif ($uri === '') { // GET - List all products
+            } 
+            // Filter by seller UUID
+            elseif (isset($_GET['seller_id'])) {
+                $sellerUuid = $_GET['seller_id'];
+                echo $productController->filterProductsBySellerID($sellerUuid);
+            } 
+            // List all products
+            elseif ($uri === '') { 
                 echo $productController->getAllProducts();
-            } elseif ($uri === '/search') { // GET - Search products
-                $query = $_GET['query'] ?? null;
-                $categoryId = $_GET['category'] ?? null;
-                $minPrice = $_GET['min_price'] ?? null;
-                $maxPrice = $_GET['max_price'] ?? null;
-                $sortBy = $_GET['sort'] ?? null;
-                echo $productController->searchProducts($query, $minPrice, $maxPrice, $categoryId, $sortBy);
-            } elseif (preg_match('/\/(\d+)/', $uri, $matches)) { // GET - Product details by ID
+            } 
+            // Get product details by ID
+            elseif (preg_match('/\/(\d+)/', $uri, $matches)) { 
                 $productId = $matches[1];
                 echo $productController->getProductDetails($productId);
-            } else {
+            } 
+            else {
                 $this->sendErrorResponse('Route not found', 404);
             }
         }
+    }
+
+    private function handleSearchRoute($productController)
+    {
+        // Parse query parameters for search
+        $query = $_GET['query'] ?? null;
+        $category = $_GET['category'] ?? null;
+        $minPrice = $_GET['min_price'] ?? null;
+        $maxPrice = $_GET['max_price'] ?? null;
+        $sortBy = $_GET['sort'] ?? 'product_name'; // Default sort by product name
+        $sortOrder = $_GET['sort_order'] ?? 'ASC'; // Default order ascending
+
+        // Validate required query parameter
+        if (!$query) {
+            $this->sendErrorResponse('Query parameter is required for search', 400);
+            return;
+        }
+
+        // Call the searchProducts method with parameters
+        echo $productController->searchProducts($query, $minPrice, $maxPrice, $category, $sortBy, $sortOrder);
     }
 
     private function sendErrorResponse($message, $statusCode = 400)
